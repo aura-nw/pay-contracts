@@ -4,14 +4,18 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, RoundDataResponse};
 use crate::state::{RoundData, PRICE_FEED_INFO, ROUND_DATA};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:price-feed";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const MAX_ROUND_DATA_LEN: usize = 105120; // we will update answer every 5 minutes, so 105120 = 365 * 24 * 12
+const MAX_DIFF_ROUND_ID: u64 = 60; // the max height diff between 2 round ids, 60 = 12 * 5
 
 /// Handling contract instantiation
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -43,15 +47,16 @@ pub fn execute(
 
 /// Handling contract query
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::LastestRoundData {} => to_binary(&query_lastest_round_data(deps)?),
+        QueryMsg::LastestRoundData {} => to_binary(&query_lastest_round_data(deps, env)?),
+        QueryMsg::RoundData { round_id } => to_binary(&query_round_data(deps, round_id)?),
     }
 }
 
 pub fn update_round_data(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     answer: u64,
 ) -> Result<Response, ContractError> {
@@ -61,15 +66,24 @@ pub fn update_round_data(
         return Err(ContractError::Unauthorized {});
     }
 
+    // TODO: we have maximum 105120 round data, so we need to delete the old round data
+
     // load the latest round id from the price feed info
-    let latest_round_id = PRICE_FEED_INFO.load(deps.storage)?.latest_round;
-    // load the round data from the round data map
-    let mut lastest_round_data = ROUND_DATA.load(deps.storage, latest_round_id)?;
-    // update the round data
-    // TODO: update the other fields
-    lastest_round_data.answer = Uint128::from(answer);
+    let latest_round_id = env.block.height;
+
+    // lastest round data
+    let round_data = RoundData {
+        answer: Uint128::from(answer),
+        updated_at: env.block.time,
+    };
+
     // save the round data
-    ROUND_DATA.save(deps.storage, latest_round_id, &lastest_round_data)?;
+    ROUND_DATA.save(deps.storage, latest_round_id, &round_data)?;
+
+    // update the latest round id in the price feed info
+    let mut price_feed_info = PRICE_FEED_INFO.load(deps.storage)?;
+    price_feed_info.latest_round = latest_round_id;
+    PRICE_FEED_INFO.save(deps.storage, &price_feed_info)?;
 
     // return the response
     Ok(Response::new()
@@ -78,11 +92,37 @@ pub fn update_round_data(
         .add_attribute("answer", answer.to_string()))
 }
 
-pub fn query_lastest_round_data(deps: Deps) -> StdResult<RoundData> {
+pub fn query_lastest_round_data(deps: Deps, env: Env) -> StdResult<RoundDataResponse> {
     // load the latest round id from the price feed info
     let latest_round_id = PRICE_FEED_INFO.load(deps.storage)?.latest_round;
     // load the round data from the round data map
     let lastest_round_data = ROUND_DATA.load(deps.storage, latest_round_id)?;
+
+    let res = RoundDataResponse {
+        round_id: env.block.height,
+        answer: lastest_round_data.answer,
+        updated_at: lastest_round_data.updated_at,
+        answered_in_round: latest_round_id,
+    };
     // return the round data
-    Ok(lastest_round_data)
+    Ok(res)
+}
+
+pub fn query_round_data(deps: Deps, round_id: u64) -> StdResult<RoundDataResponse> {
+    let min: Option<Bound<u64>> = Some(Bound::inclusive(round_id - MAX_DIFF_ROUND_ID * 13)); // query data in previous 1 hour 5 minutes
+    let max: Option<Bound<u64>> = Some(Bound::inclusive(round_id));
+    // load the round data from the round data map
+    let binding = ROUND_DATA
+        .range(deps.storage, min, max, cosmwasm_std::Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    let round_data = binding.last().unwrap();
+
+    let res = RoundDataResponse {
+        round_id,
+        answer: round_data.1.answer,
+        updated_at: round_data.1.updated_at,
+        answered_in_round: round_data.0,
+    };
+    // return the round data
+    Ok(res)
 }

@@ -1,7 +1,6 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
-use cw_utils::Expiration;
 
 // the config of the price feed
 #[cw_serde]
@@ -23,9 +22,7 @@ pub struct PriceFeedInfo {
 #[cw_serde]
 pub struct RoundData {
     pub answer: Uint128,
-    pub started_at: Expiration,
-    pub updated_at: Expiration,
-    pub answered_in_round: Uint128,
+    pub updated_at: Timestamp,
 }
 
 // the config data
