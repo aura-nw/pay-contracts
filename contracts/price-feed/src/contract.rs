@@ -14,7 +14,7 @@ use crate::state::{RoundData, PRICE_FEED_INFO, ROUND_DATA};
 const CONTRACT_NAME: &str = "crates.io:price-feed";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const MAX_ROUND_DATA_LEN: usize = 105120; // we will update answer every 5 minutes, so 105120 = 365 * 24 * 12
+// const MAX_ROUND_DATA_LEN: usize = 105120; // we will update answer every 5 minutes, so 105120 = 365 * 24 * 12
 const MAX_DIFF_ROUND_ID: u64 = 60; // the max height diff between 2 round ids, 60 = 12 * 5
 
 /// Handling contract instantiation
@@ -41,6 +41,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::UpdateController { controller } => {
+            update_controller(deps, env, info, controller)
+        }
         ExecuteMsg::UpdateRoundData { answer } => update_round_data(deps, env, info, answer),
     }
 }
@@ -54,11 +57,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn update_round_data(
+pub fn update_controller(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    answer: u64,
+    controller: String,
 ) -> Result<Response, ContractError> {
     // check if the sender is the owner
     let config = crate::state::CONFIG.load(deps.storage)?;
@@ -66,7 +69,37 @@ pub fn update_round_data(
         return Err(ContractError::Unauthorized {});
     }
 
-    // TODO: we have maximum 105120 round data, so we need to delete the old round data
+    // update the controller
+    let mut config = crate::state::CONFIG.load(deps.storage)?;
+    config.controller = deps.api.addr_validate(&controller)?;
+    crate::state::CONFIG.save(deps.storage, &config)?;
+
+    // return the response
+    Ok(Response::new()
+        .add_attribute("method", "update_controller")
+        .add_attribute("controller", controller))
+}
+
+pub fn update_round_data(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    answer: u64,
+) -> Result<Response, ContractError> {
+    // check if the sender is the controller
+    let config = crate::state::CONFIG.load(deps.storage)?;
+    if info.sender != config.controller {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // // TODO: Optimize the code to reduce the gas cost
+    // // remove the first round data if the round data length is greater than 105120
+    // let round_data_len = ROUND_DATA
+    //     .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+    //     .collect::<StdResult<Vec<_>>>()?;
+    // if round_data_len.len() > MAX_ROUND_DATA_LEN {
+    //     ROUND_DATA.remove(deps.storage, round_data_len[0].0);
+    // }
 
     // load the latest round id from the price feed info
     let latest_round_id = env.block.height;

@@ -8,6 +8,7 @@ pub struct InstantiateMsg {}
 /// Message type for `execute` entry_point
 #[cw_serde]
 pub enum ExecuteMsg {
+    UpdateController { controller: String },
     UpdateRoundData { answer: u64 },
 }
 
