@@ -8,7 +8,7 @@ use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, RoundDataResponse};
-use crate::state::{RoundData, PRICE_FEED_INFO, ROUND_DATA};
+use crate::state::{RoundData, CONFIG, PRICE_FEED_INFO, ROUND_DATA};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:price-feed";
@@ -21,15 +21,31 @@ const MAX_DIFF_ROUND_ID: u64 = 60; // the max height diff between 2 round ids, 6
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // init config
+    let config = crate::state::Config {
+        owner: info.sender.clone(),
+        controller: deps.api.addr_validate(&msg.controller)?,
+    };
+    CONFIG.save(deps.storage, &config)?;
+
+    // init price feed info
+    let price_feed_info = crate::state::PriceFeedInfo {
+        latest_round: env.block.height,
+        decimals: msg.decimals,
+        description: msg.description,
+    };
+    PRICE_FEED_INFO.save(deps.storage, &price_feed_info)?;
+
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", info.sender)
+        .add_attribute("controller", msg.controller))
 }
 
 /// Handling contract execution
@@ -54,6 +70,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::LastestRoundData {} => to_binary(&query_lastest_round_data(deps, env)?),
         QueryMsg::RoundData { round_id } => to_binary(&query_round_data(deps, round_id)?),
+        QueryMsg::Decimals {} => to_binary(&PRICE_FEED_INFO.load(deps.storage)?.decimals),
+        QueryMsg::Description {} => to_binary(&PRICE_FEED_INFO.load(deps.storage)?.description),
+        QueryMsg::Controller {} => to_binary(&CONFIG.load(deps.storage)?.controller),
     }
 }
 

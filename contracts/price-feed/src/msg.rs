@@ -3,7 +3,11 @@ use cosmwasm_std::{Timestamp, Uint128};
 
 /// Message type for `instantiate` entry_point
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub controller: String,
+    pub decimals: u8,
+    pub description: String,
+}
 
 /// Message type for `execute` entry_point
 #[cw_serde]
@@ -24,6 +28,12 @@ pub enum QueryMsg {
     LastestRoundData {},
     #[returns(RoundDataResponse)]
     RoundData { round_id: u64 },
+    #[returns(u8)]
+    Decimals {},
+    #[returns(String)]
+    Description {},
+    #[returns(String)]
+    Controller {},
 }
 
 // the data struct of each round

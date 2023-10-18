@@ -15,7 +15,6 @@ pub struct PriceFeedInfo {
     pub latest_round: u64,
     pub decimals: u8,
     pub description: String,
-    pub version: u64,
 }
 
 // the data struct of each round
