@@ -1,6 +1,7 @@
 #[cfg(test)]
 pub mod env {
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
     use crate::contract::{
@@ -120,12 +121,12 @@ pub mod env {
                 &MinterInstantiateMsg {
                     receiver_name: "aura".to_string(),
                     receiver_address: AURA.to_string(),
-                    accepted_denom: NATIVE_BALANCE.to_string(),
+                    accepted_denom: NATIVE_DENOM.to_string(),
                     price_feed: price_feed_contract_addr.to_string(),
                     token_code_id: cw20_contract_code_id,
                     token_instantiation_msg: Cw20InstantiateMsg {
                         name: "Stable Token".to_string(),
-                        symbol: "ST".to_string(),
+                        symbol: "STV".to_string(),
                         decimals: 6,
                         initial_balances: vec![],
                         mint: None,

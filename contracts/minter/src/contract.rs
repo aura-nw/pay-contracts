@@ -5,10 +5,10 @@ use cosmwasm_std::{
     DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw20::MinterResponse;
 use cw20_base::msg::{ExecuteMsg as Cw20ExecuteMsg, InstantiateMsg as Cw20InstantiateMsg};
 use cw_utils::parse_reply_instantiate_data;
-use price_feed::msg::QueryMsg as PriceFeedQueryMsg;
-use price_feed::state::RoundData;
+use price_feed::msg::{QueryMsg as PriceFeedQueryMsg, RoundDataResponse};
 
 use crate::error::ContractError;
 use crate::msg::{ExchangingInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiverResponse};
@@ -22,7 +22,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -44,6 +44,14 @@ pub fn instantiate(
     };
     EXCHANGING_INFO.save(deps.storage, &receiver_info)?;
 
+    let new_token_instantiation_msg = Cw20InstantiateMsg {
+        mint: Some(MinterResponse {
+            minter: env.contract.address.to_string(),
+            cap: None,
+        }),
+        ..msg.token_instantiation_msg
+    };
+
     // now we instantiate the cw20 contract
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -55,14 +63,7 @@ pub fn instantiate(
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
                 code_id: msg.token_code_id,
-                msg: to_binary(&Cw20InstantiateMsg {
-                    name: "default".to_string(),
-                    symbol: "default".to_string(),
-                    decimals: 6,
-                    initial_balances: vec![],
-                    mint: None,
-                    marketing: None,
-                })?,
+                msg: to_binary(&new_token_instantiation_msg)?,
                 funds: vec![],
                 label: "Intantiate token for minter".to_string(),
             }),
@@ -140,7 +141,7 @@ pub fn execute_exchange(
 
     // query last round data from price feed
     // query the owner of the nft
-    let lastest_round_data: RoundData = deps
+    let lastest_round_data: RoundDataResponse = deps
         .querier
         .query_wasm_smart(
             exchanging_info.price_feed,
