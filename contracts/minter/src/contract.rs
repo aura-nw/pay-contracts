@@ -15,7 +15,7 @@ use crate::msg::{ExchangingInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, R
 use crate::state::{Config, ExchangingInfo, EXCHANGING_INFO};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:manager";
+const CONTRACT_NAME: &str = "crates.io:minter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Handling contract instantiation
