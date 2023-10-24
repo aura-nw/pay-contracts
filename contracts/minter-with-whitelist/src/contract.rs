@@ -13,7 +13,8 @@ use price_feed::msg::{QueryMsg as PriceFeedQueryMsg, RoundDataResponse};
 use crate::error::ContractError;
 use crate::msg::{ExchangingInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiverResponse};
 use crate::state::{
-    Asset, AssetType, Config, ExchangingInfo, Requirement, EXCHANGING_INFO, REQUIREMENT_ASSETS,
+    Asset, AssetType, Config, ExchangingInfo, Requirement, RequirementAssets, EXCHANGING_INFO,
+    REQUIREMENT_ASSETS,
 };
 
 // version info for migration info
@@ -45,6 +46,13 @@ pub fn instantiate(
         price_feed: deps.api.addr_validate(&msg.price_feed)?,
     };
     EXCHANGING_INFO.save(deps.storage, &receiver_info)?;
+
+    // init requirement assets
+    let requirement_assets = RequirementAssets {
+        assets: vec![],
+        required: Requirement::All {},
+    };
+    REQUIREMENT_ASSETS.save(deps.storage, &requirement_assets)?;
 
     let new_token_instantiation_msg = Cw20InstantiateMsg {
         mint: Some(MinterResponse {
@@ -284,6 +292,9 @@ pub fn remove_asset_types(
 
 pub fn assert_requirement_assets(deps: Deps, user: String) -> Result<(), ContractError> {
     let requirement_assets = REQUIREMENT_ASSETS.load(deps.storage)?;
+    if requirement_assets.assets.is_empty() {
+        return Ok(());
+    }
     let requirement = match requirement_assets.required {
         Requirement::All {} => requirement_assets.assets.len(),
         Requirement::Any { at_least } => at_least as usize,
