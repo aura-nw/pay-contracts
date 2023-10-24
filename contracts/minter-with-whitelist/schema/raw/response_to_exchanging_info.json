@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExchangingInfoResponse",
+  "type": "object",
+  "required": [
+    "accepted_denom",
+    "price_feed",
+    "token_address"
+  ],
+  "properties": {
+    "accepted_denom": {
+      "type": "string"
+    },
+    "price_feed": {
+      "type": "string"
+    },
+    "token_address": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

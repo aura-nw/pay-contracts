@@ -32,8 +32,13 @@ cw-multi-test = "0.17.0"
 cw20 = "1.1.1"
 cw20-base = { version = "1.1.1", features = ["library"] }
 price-feed = { version = "0.1.0", path = "./contracts/price-feed" }
+cw721 = "0.18.0"
 
 [profile.release.package.minter]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.minter-with-whitelist]
 codegen-units = 1
 incremental = false
 
