@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "description": "Message type for `execute` entry_point",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "update_controller"
+      ],
+      "properties": {
+        "update_controller": {
+          "type": "object",
+          "required": [
+            "controller"
+          ],
+          "properties": {
+            "controller": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_round_data"
+      ],
+      "properties": {
+        "update_round_data": {
+          "type": "object",
+          "required": [
+            "answer"
+          ],
+          "properties": {
+            "answer": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
