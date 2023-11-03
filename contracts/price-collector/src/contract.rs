@@ -36,7 +36,7 @@ pub fn instantiate(
 
     // init price feed info
     let price_feed_info = crate::state::PriceFeedInfo {
-        price_feed: deps.api.addr_validate(&msg.controller)?,
+        price_feed: deps.api.addr_validate(&msg.price_feed)?,
         latest_round: env.block.height,
     };
     PRICE_FEED_INFO.save(deps.storage, &price_feed_info)?;
@@ -44,7 +44,7 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender)
-        .add_attribute("controller", msg.controller))
+        .add_attribute("controller", msg.price_feed))
 }
 
 /// Handling contract execution
@@ -56,9 +56,10 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdatePriceFeed { price_feed, status } => {
-            update_price_feed(deps, env, info, price_feed, status)
-        }
+        ExecuteMsg::UpdatePriceFeeder {
+            price_feeder,
+            status,
+        } => update_price_feed(deps, env, info, price_feeder, status),
         ExecuteMsg::ProvideRoundData { answer } => update_round_data(deps, env, info, answer),
     }
 }
@@ -76,7 +77,7 @@ pub fn update_price_feed(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    price_feed: String,
+    price_feeder: String,
     status: bool,
 ) -> Result<Response, ContractError> {
     // check if the sender is the owner
@@ -87,15 +88,15 @@ pub fn update_price_feed(
 
     // update the status of the price feed in the list
     if status {
-        FEEDERS.save(deps.storage, deps.api.addr_validate(&price_feed)?, &true)?;
+        FEEDERS.save(deps.storage, deps.api.addr_validate(&price_feeder)?, &true)?;
     } else {
-        FEEDERS.remove(deps.storage, deps.api.addr_validate(&price_feed)?);
+        FEEDERS.remove(deps.storage, deps.api.addr_validate(&price_feeder)?);
     }
 
     // return the response
     Ok(Response::new().add_attributes([
         ("method", "update_price_feed"),
-        ("price_feed", price_feed.as_str()),
+        ("price_feed", price_feeder.as_str()),
         ("status", status.to_string().as_str()),
     ]))
 }
@@ -132,11 +133,11 @@ pub fn update_round_data(
         // create new answer
         let new_answer = Answer {
             provider: info.sender,
-            answer,
+            value: answer,
             updated_at_height: env.block.height,
         };
 
-        round_data.answers.push(new_answer);
+        round_data.answers.push(new_answer.clone());
 
         let mut res = Response::new();
 
@@ -146,27 +147,39 @@ pub fn update_round_data(
             .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
         if round_data.current_number_answeres() * 3 > feeders.len() * 2 {
-            // TODO: if the answer is not valid, then the round is rejected
-            // round_data.status = crate::state::RoundDataStatus::Rejected;
-            // round_data.answered_at_height = env.block.height;
+            let mut sorted_answers = vec![];
+            // sort the answers by the answer value using insertion sort
+            for answer in round_data.answers.iter() {
+                let mut i = sorted_answers.len();
+                while i > 0 && answer.value < sorted_answers[i - 1] {
+                    i -= 1;
+                }
+                sorted_answers.insert(i, answer.value);
+            }
 
-            // if the answer is valid, then the round is answered
-            round_data.status = crate::state::RoundDataStatus::Answered;
-            round_data.answered_at_height = env.block.height;
+            // the new answer must be not greater than 10% of the last answer and not less than 10% of the first answer
+            if new_answer.value > sorted_answers[sorted_answers.len() - 1] * 11 / 10
+                || new_answer.value < sorted_answers[0] * 9 / 10
+            {
+                // if the answer is not valid, then the round is rejected
+                round_data.status = crate::state::RoundDataStatus::Rejected;
+                round_data.answered_at_height = env.block.height;
+            } else {
+                // if the answer is valid, then the round is answered
+                round_data.status = crate::state::RoundDataStatus::Answered;
+                round_data.answered_at_height = env.block.height;
 
-            // save the round data
-            ROUND_DATA.save(deps.storage, latest_round_id, &round_data)?;
-
-            // update the latest round id in the price feed info
-            let price_feed_info = PRICE_FEED_INFO.load(deps.storage)?;
-            // return the response
-            res = res.add_message(WasmMsg::Execute {
-                contract_addr: price_feed_info.price_feed.to_string(),
-                msg: to_binary(&PriceFeedExecuteMsg::UpdateRoundData {
-                    answer: round_data.current_answer().unwrap(),
-                })?,
-                funds: vec![],
-            })
+                // update the latest round id in the price feed info
+                let price_feed_info = PRICE_FEED_INFO.load(deps.storage)?;
+                // return the response
+                res = res.add_message(WasmMsg::Execute {
+                    contract_addr: price_feed_info.price_feed.to_string(),
+                    msg: to_binary(&PriceFeedExecuteMsg::UpdateRoundData {
+                        answer: round_data.current_answer(),
+                    })?,
+                    funds: vec![],
+                })
+            }
         }
         // just save the round data
         ROUND_DATA.save(deps.storage, latest_round_id, &round_data)?;
@@ -183,7 +196,7 @@ pub fn update_round_data(
             status: crate::state::RoundDataStatus::Pending,
             answers: vec![Answer {
                 provider: info.sender,
-                answer,
+                value: answer,
                 updated_at_height: env.block.height,
             }],
             answered_at_height: 0,

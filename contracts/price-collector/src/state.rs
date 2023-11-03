@@ -24,7 +24,7 @@ pub enum RoundDataStatus {
 #[cw_serde]
 pub struct Answer {
     pub provider: Addr,
-    pub answer: u64,
+    pub value: u64,
     pub updated_at_height: u64,
 }
 
@@ -42,12 +42,14 @@ impl RoundData {
         self.answers.iter().any(|a| a.provider == provider)
     }
 
-    pub fn current_answer(&self) -> Option<u64> {
-        // TODO: find other more efficient way to get the current answer
-        self.answers
-            .iter()
-            .max_by_key(|a| a.updated_at_height)
-            .map(|a| a.answer)
+    pub fn current_answer(&self) -> u64 {
+        // get the average of all answers
+        let sum: u64 = self.answers.iter().map(|a| a.value).sum();
+        if sum == 0 {
+            0
+        } else {
+            sum / self.answers.len() as u64
+        }
     }
 
     pub fn current_number_answeres(&self) -> usize {

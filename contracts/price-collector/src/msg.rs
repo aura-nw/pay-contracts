@@ -5,15 +5,14 @@ use crate::state::RoundData;
 /// Message type for `instantiate` entry_point
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub controller: String,
+    pub price_feed: String,
     pub decimals: u8,
-    pub description: String,
 }
 
 /// Message type for `execute` entry_point
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdatePriceFeed { price_feed: String, status: bool },
+    UpdatePriceFeeder { price_feeder: String, status: bool },
     ProvideRoundData { answer: u64 },
 }
 

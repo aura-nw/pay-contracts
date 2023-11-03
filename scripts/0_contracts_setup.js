@@ -146,29 +146,30 @@ async function main() {
 
     // Minter contract
     console.log("Storing minter contract code...");
-    storeCodeResponse = await store_contract("minter");
-    let minter_code_id = storeCodeResponse.codeId;
+    storeCodeResponse = await store_contract("price_collector");
+    let price_collector_code_id = storeCodeResponse.codeId;
 
     // prepare instantiate message for minter contract
-    let minterInstantiateMsg = {
-        "receiver_name": "aura",
-        "receiver_address": RECEIVER,
-        "accepted_denom": chainConfig.denom,
+    let priceCollectorInstantiateMsg = {
         "price_feed": priceFeedInstantiateResponse.contractAddress,
-        "token_code_id": 637,
-        "token_instantiation_msg": {
-            "name": "Stable Token",
-            "symbol": "STV",
-            "decimals": 6,
-            "initial_balances": [],
-            "mint": null,
-            "marketing": null,
+        "decimals": 6,
+    }
+
+    let priceCollectorInstantiateResponse = await instantiate(price_collector_code_id, priceCollectorInstantiateMsg);
+
+    console.log(priceCollectorInstantiateResponse);
+
+    // update new price feeder
+    let feeder_1 = "aura1s9e6r0qv8nvfgzhdw9z23rpvgzzdwavu2qfjdd";
+    let updatePriceFeederMsg = {
+        "update_price_feeder": {
+            "price_feeder": feeder_1,
+            "status": true
         },
     }
 
-    let minterInstantiateResponse = await instantiate(minter_code_id, minterInstantiateMsg);
-
-    console.log(minterInstantiateResponse);
+    let updatePriceFeederResponse = await execute(deployerClient, deployerAccount, priceCollectorInstantiateResponse.contractAddress, updatePriceFeederMsg);
+    console.log(updatePriceFeederResponse);
 }
 
 main();
