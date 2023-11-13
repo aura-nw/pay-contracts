@@ -144,7 +144,7 @@ async function main() {
 
     console.log(priceFeedInstantiateResponse);
 
-    // Minter contract
+    // Price collector contract
     console.log("Storing minter contract code...");
     storeCodeResponse = await store_contract("price_collector");
     let price_collector_code_id = storeCodeResponse.codeId;

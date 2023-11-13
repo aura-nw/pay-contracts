@@ -115,7 +115,10 @@ pub fn update_round_data(
     // load latest round id
     let latest_round_id = PRICE_FEED_INFO.load(deps.storage)?.latest_round;
 
-    if latest_round_id > env.block.height - MAX_DIFF_DURRATION {
+    if (latest_round_id > env.block.height - MAX_DIFF_DURRATION)
+        && ROUND_DATA.has(deps.storage, latest_round_id)
+    {
+        println!("latest_round_id: {}", latest_round_id);
         // The lastest round is not expired yet, so just add new answer to the round data
         // load the RoundData
         let mut round_data = ROUND_DATA.load(deps.storage, latest_round_id)?;
