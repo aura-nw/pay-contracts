@@ -145,7 +145,7 @@ async function main() {
     console.log(priceFeedInstantiateResponse);
 
     // Price collector contract
-    console.log("Storing minter contract code...");
+    console.log("Storing price collector contract code...");
     storeCodeResponse = await store_contract("price_collector");
     let price_collector_code_id = storeCodeResponse.codeId;
 
@@ -158,6 +158,16 @@ async function main() {
     let priceCollectorInstantiateResponse = await instantiate(price_collector_code_id, priceCollectorInstantiateMsg);
 
     console.log(priceCollectorInstantiateResponse);
+
+    // update price feed controller
+    let updatePriceFeedControllerMsg = {
+        "update_controller": {
+            "controller": priceCollectorInstantiateResponse.contractAddress,
+        },
+    }
+
+    let updatePriceFeedControllerResponse = await execute(deployerClient, deployerAccount, priceFeedInstantiateResponse.contractAddress, updatePriceFeedControllerMsg);
+    console.log(updatePriceFeedControllerResponse);
 
     // update new price feeder
     let feeder_1 = "aura1s9e6r0qv8nvfgzhdw9z23rpvgzzdwavu2qfjdd";

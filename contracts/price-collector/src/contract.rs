@@ -16,7 +16,7 @@ use price_feed::msg::ExecuteMsg as PriceFeedExecuteMsg;
 const CONTRACT_NAME: &str = "crates.io:price-collector";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const MAX_DIFF_DURRATION: u64 = 300; // the max height diff between 2 round ids is 5 minutes, 300 = (12 * 5) * 5
+pub const MAX_DIFF_DURRATION: u64 = 300; // the max height diff between 2 round ids is 5 minutes, 300 = (12 * 5) * 5
 
 /// Handling contract instantiation
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -118,7 +118,6 @@ pub fn update_round_data(
     if (latest_round_id > env.block.height - MAX_DIFF_DURRATION)
         && ROUND_DATA.has(deps.storage, latest_round_id)
     {
-        println!("latest_round_id: {}", latest_round_id);
         // The lastest round is not expired yet, so just add new answer to the round data
         // load the RoundData
         let mut round_data = ROUND_DATA.load(deps.storage, latest_round_id)?;
@@ -192,6 +191,34 @@ pub fn update_round_data(
             .add_attribute("round_id", latest_round_id.to_string())
             .add_attribute("answer", answer.to_string()))
     } else {
+        // if previous round data is pending, just process it first
+        let mut res = Response::new();
+        if ROUND_DATA.has(deps.storage, latest_round_id) {
+            let mut round_data = ROUND_DATA.load(deps.storage, latest_round_id)?;
+
+            if round_data.status == crate::state::RoundDataStatus::Pending {
+                let feeders = FEEDERS
+                    .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+                    .collect::<StdResult<Vec<_>>>()?;
+                if round_data.current_number_answeres() * 3 > feeders.len() * 2 {
+                    // if the answer is valid, then the round is answered
+                    round_data.status = crate::state::RoundDataStatus::Answered;
+                    round_data.answered_at_height = env.block.height;
+
+                    // update the latest round id in the price feed info
+                    let price_feed_info = PRICE_FEED_INFO.load(deps.storage)?;
+                    // return the response
+                    res = res.add_message(WasmMsg::Execute {
+                        contract_addr: price_feed_info.price_feed.to_string(),
+                        msg: to_binary(&PriceFeedExecuteMsg::UpdateRoundData {
+                            answer: round_data.current_answer(),
+                        })?,
+                        funds: vec![],
+                    })
+                }
+            }
+        }
+
         // The lastest round is expired, so create new round data
         // create new round data
         let round_data = RoundData {
@@ -213,7 +240,7 @@ pub fn update_round_data(
         price_feed_info.latest_round = env.block.height;
         PRICE_FEED_INFO.save(deps.storage, &price_feed_info)?;
 
-        Ok(Response::new().add_attributes([
+        Ok(res.add_attributes([
             ("method", "update_round_data"),
             ("round_id", env.block.height.to_string().as_str()),
             ("answer", answer.to_string().as_str()),

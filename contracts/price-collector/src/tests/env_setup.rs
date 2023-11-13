@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod env {
-    use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+    use cosmwasm_std::{Addr, BlockInfo, Coin, Empty, Uint128};
 
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
@@ -10,13 +10,14 @@ pub mod env {
         execute as PriceFeedExecute, instantiate as PriceFeedInstantiate, query as PriceFeedQuery,
     };
 
-    use price_feed::msg::InstantiateMsg as PriceFeedInstantiateMsg;
+    use price_feed::msg::{
+        ExecuteMsg as PriceFeedExecuteMsg, InstantiateMsg as PriceFeedInstantiateMsg,
+    };
 
     pub const ADMIN: &str = "aura1000000000000000000000000000000000admin";
     pub const USER1: &str = "aura1000000000000000000000000000000000user1";
     // pub const AURA: &str = "aura10000000000000000000000000000000000aura";
     pub const CONTROLLER: &str = "aura10000000000000000000000000000controller";
-    pub const CONTROLLER_FAKE: &str = "aura10000000000000000000000000000fake";
 
     pub const NATIVE_DENOM: &str = "uaura";
     pub const NATIVE_BALANCE: u128 = 1_000_000_000_000u128;
@@ -124,10 +125,28 @@ pub mod env {
         };
         let _res = app.execute_contract(
             Addr::unchecked(ADMIN),
-            Addr::unchecked(price_collector_contract_addr),
+            Addr::unchecked(price_collector_contract_addr.clone()),
             &exec_msg,
             &[],
         );
+
+        // update new controller for price feed contract
+        let exec_msg = PriceFeedExecuteMsg::UpdateController {
+            controller: price_collector_contract_addr.to_string(),
+        };
+        let _res = app.execute_contract(
+            Addr::unchecked(ADMIN),
+            Addr::unchecked(price_feed_contract_addr),
+            &exec_msg,
+            &[],
+        );
+
+        // change block time increase 6 seconds to make phase active
+        app.set_block(BlockInfo {
+            time: app.block_info().time.plus_seconds(100000),
+            height: app.block_info().height + 20,
+            chain_id: app.block_info().chain_id,
+        });
 
         // return the app instance and contract info vector
         (app, contract_info_vec)
