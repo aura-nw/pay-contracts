@@ -129,57 +129,37 @@ async function main() {
     // EXECUTE CONTRACT
     // ****************
     // Price feed contract
-    console.log("Storing price feed contract code...");
-    let storeCodeResponse = await store_contract("price_feed");
-    let price_feed_code_id = storeCodeResponse.codeId;
+    console.log("Storing wrap token contract code...");
+    let storeCodeResponse = await store_contract("wrap_token");
+    let wrap_token_code_id = storeCodeResponse.codeId;
 
     // prepare instantiate message for price feed contract
-    let priceFeedInstantiateMsg = {
-        "controller": CONTROLLER,
+    let wrapTokenInstantiateMsg = {
+        "name": "Aura Wrap Token",
+        "symbol": "wAURA",
         "decimals": 6,
-        "description": "AURA / VND",
+        "initial_balances": [],
+        "mint": {
+            "minter": "aura1uaflg8e46wwtvm0td8mkjeaa0d5s53c92dj85r",
+            "cap": null,
+        },
+        "native_denom": chainConfig.denom,
     };
 
-    let priceFeedInstantiateResponse = await instantiate(price_feed_code_id, priceFeedInstantiateMsg);
+    let wrapTokenInstantiateResponse = await instantiate(wrap_token_code_id, wrapTokenInstantiateMsg);
 
-    console.log(priceFeedInstantiateResponse);
+    console.log(wrapTokenInstantiateResponse);
 
-    // Price collector contract
-    console.log("Storing price collector contract code...");
-    storeCodeResponse = await store_contract("price_collector");
-    let price_collector_code_id = storeCodeResponse.codeId;
+    // // update price feed controller
+    // let updatePriceFeedControllerMsg = {
+    //     "mint": {
+    //         "recipient": priceCollectorInstantiateResponse.contractAddress,
+    //         "amount": "1000000000000",
+    //     },
+    // }
 
-    // prepare instantiate message for minter contract
-    let priceCollectorInstantiateMsg = {
-        "price_feed": priceFeedInstantiateResponse.contractAddress,
-        "decimals": 6,
-    }
-
-    let priceCollectorInstantiateResponse = await instantiate(price_collector_code_id, priceCollectorInstantiateMsg);
-
-    console.log(priceCollectorInstantiateResponse);
-
-    // update price feed controller
-    let updatePriceFeedControllerMsg = {
-        "update_controller": {
-            "controller": priceCollectorInstantiateResponse.contractAddress,
-        },
-    }
-
-    let updatePriceFeedControllerResponse = await execute(deployerClient, deployerAccount, priceFeedInstantiateResponse.contractAddress, updatePriceFeedControllerMsg);
-    console.log(updatePriceFeedControllerResponse);
-
-    // update new price feeder
-    let feeder_1 = "aura1s9e6r0qv8nvfgzhdw9z23rpvgzzdwavu2qfjdd";
-    let updatePriceFeederMsg = {
-        "update_price_feeder": {
-            "price_feeder": feeder_1,
-            "status": true
-        },
-    }
-
-    let updatePriceFeederResponse = await execute(deployerClient, deployerAccount, priceCollectorInstantiateResponse.contractAddress, updatePriceFeederMsg);
-    console.log(updatePriceFeederResponse);
+    // let updatePriceFeedControllerResponse = await execute(deployerClient, deployerAccount, wrapTokenInstantiateResponse.contractAddress, updatePriceFeedControllerMsg);
+    // console.log(updatePriceFeedControllerResponse);
 }
 
 main();
