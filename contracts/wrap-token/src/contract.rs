@@ -18,9 +18,6 @@ use crate::state::{InstantiateMsg, SupportedNative, SUPPORTED_NATIVE};
 const CONTRACT_NAME: &str = "crates.io:cw20-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// this is the denominator of native token that is supported by this contract
-pub static NATIVE_DENOM: &str = "uaura";
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
