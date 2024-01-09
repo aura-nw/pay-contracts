@@ -129,37 +129,37 @@ async function main() {
     // EXECUTE CONTRACT
     // ****************
     // Price feed contract
-    console.log("Storing wrap token contract code...");
-    let storeCodeResponse = await store_contract("wrap_token");
-    let wrap_token_code_id = storeCodeResponse.codeId;
+    // console.log("Storing wrap token contract code...");
+    // let storeCodeResponse = await store_contract("wrap_token");
+    // let wrap_token_code_id = storeCodeResponse.codeId;
 
-    // prepare instantiate message for price feed contract
-    let wrapTokenInstantiateMsg = {
-        "name": "Aura Wrap Token",
-        "symbol": "wAURA",
-        "decimals": 6,
-        "initial_balances": [],
-        "mint": {
-            "minter": "aura1uaflg8e46wwtvm0td8mkjeaa0d5s53c92dj85r",
-            "cap": null,
-        },
-        "native_denom": chainConfig.denom,
-    };
-
-    let wrapTokenInstantiateResponse = await instantiate(wrap_token_code_id, wrapTokenInstantiateMsg);
-
-    console.log(wrapTokenInstantiateResponse);
-
-    // // update price feed controller
-    // let updatePriceFeedControllerMsg = {
+    // // prepare instantiate message for price feed contract
+    // let wrapTokenInstantiateMsg = {
+    //     "name": "Aura Wrap Token",
+    //     "symbol": "wAURA",
+    //     "decimals": 6,
+    //     "initial_balances": [],
     //     "mint": {
-    //         "recipient": priceCollectorInstantiateResponse.contractAddress,
-    //         "amount": "1000000000000",
+    //         "minter": "aura1uaflg8e46wwtvm0td8mkjeaa0d5s53c92dj85r",
+    //         "cap": null,
     //     },
-    // }
+    //     "native_denom": chainConfig.denom,
+    // };
 
-    // let updatePriceFeedControllerResponse = await execute(deployerClient, deployerAccount, wrapTokenInstantiateResponse.contractAddress, updatePriceFeedControllerMsg);
-    // console.log(updatePriceFeedControllerResponse);
+    // let wrapTokenInstantiateResponse = await instantiate(wrap_token_code_id, wrapTokenInstantiateMsg);
+
+    // console.log(wrapTokenInstantiateResponse);
+
+    // update price feed controller
+    let mintTokenMsg = {
+        "mint": {
+            "recipient": "aura1uaflg8e46wwtvm0td8mkjeaa0d5s53c92dj85r",
+            "amount": "30000000000",
+        },
+    }
+
+    let mintTokenResponse = await execute(deployerClient, deployerAccount, "aura199ehk0vljy6tx9rsyzz9pl3ee8hldyjl8enje0vsnzgxauvf5slsms95jp", mintTokenMsg, 30000000000);
+    console.log(mintTokenResponse);
 }
 
 main();

@@ -1,7 +1,11 @@
 {
   "dependencies": {
+    "@auranw/aurajs": "^1.0.0-alpha1",
     "@cosmjs/cosmwasm-stargate": "^0.31.1",
     "@cosmjs/proto-signing": "^0.31.1",
-    "@cosmjs/stargate": "^0.31.1"
+    "@cosmjs/stargate": "^0.31.1",
+    "@cosmjs/tendermint-rpc": "^0.31.1",
+    "bandprotocol": "^0.5.11",
+    "cosmjs-types": "^0.9.0"
   }
 }
